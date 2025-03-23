@@ -274,13 +274,19 @@ async def export_user_data(bot: Bot, chat_id: int):
             save_to_excel(arrived_data, ["Трек-коды", "Имя", "Номер телефон"], arrived_file)
             save_to_excel(all_tracks_data, ["Трек-коды", "Дата получения", "Статус", "Привязанный номер телефона"], all_tracks_file)
 
-            # ✅ Send all files
+            # ✅ Send all files with proper Excel file type
             async with aiofiles.open(users_file, "rb") as file1, \
                        aiofiles.open(arrived_file, "rb") as file2, \
                        aiofiles.open(all_tracks_file, "rb") as file3:
-                await bot.send_document(chat_id, await file1.read(), caption="📂 Все данные пользователей в базе данных")
-                await bot.send_document(chat_id, await file2.read(), caption="📂 Данные по треку (прибыло в Таджикистан)")
-                await bot.send_document(chat_id, await file3.read(), caption="📂 Список всех трек-кодов")
+            
+                # Convert to InputFile to include filename
+                users_doc = types.InputFile(users_file, filename="All_users_data.xlsx")
+                arrived_doc = types.InputFile(arrived_file, filename="Track_data_arrived.xlsx")
+                all_tracks_doc = types.InputFile(all_tracks_file, filename="List_of_all_tracks.xlsx")
+            
+                await bot.send_document(chat_id, users_doc, caption="📂 Все данные пользователей в базе данных")
+                await bot.send_document(chat_id, arrived_doc, caption="📂 Данные по треку (прибыло в Таджикистан)")
+                await bot.send_document(chat_id, all_tracks_doc, caption="📂 Список всех трек-кодов")
 
         await conn.ensure_closed()
 
