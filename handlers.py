@@ -680,5 +680,5 @@ async def deleteList(update: types.Message, state: FSMContext):
         await update.reply("❌ Не удалось обработать файл. Проверьте формат и попробуйте еще раз.")
 
 async def contactUs(update: types.Message, state: FSMContext):
-    await update.answer("🔹Инстагарам: sheroz.cargo✅\n🔹Админ: @justsherozz")
+    await update.answer("🔹Инстагарам: rahmonov.me✅\n🔹Админ: @ismoil_rahmonov")
     await state.finish()
