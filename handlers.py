@@ -27,6 +27,7 @@ class Form(StatesGroup):
     deleteUser = State()
     changeStatus = State()
     deleteList = State()
+    admin = State()
 
 # Start command: Check if user is already logged in or ask for credentials
 async def start(update: types.Message):
@@ -48,6 +49,8 @@ async def start(update: types.Message):
 # Handle phone number input: Validate phone number and check if it exists in the database
 async def handle_phone_number(update: types.Message, state: FSMContext):
     phone_number = update.text.strip()
+
+    if phone_number == "/admin_page": await Form.admin.set()
 
     if not await is_valid_phone_number(phone_number):
         await update.answer("❌ Неверный формат номера телефона. Введите действительный номер телефона:")
