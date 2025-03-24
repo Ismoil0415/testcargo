@@ -28,6 +28,7 @@ class Form(StatesGroup):
     changeStatus = State()
     deleteList = State()
     admin = State()
+    start = State()
 
 # Start command: Check if user is already logged in or ask for credentials
 async def start(update: types.Message):
@@ -50,7 +51,7 @@ async def start(update: types.Message):
 async def handle_phone_number(update: types.Message, state: FSMContext):
     phone_number = update.text.strip()
 
-    if phone_number == "/admin_page": await Form.admin.set()
+    if phone_number == "/admin_panel": await Form.admin.set()
 
     if not await is_valid_phone_number(phone_number):
         await update.answer("❌ Неверный формат номера телефона. Введите действительный номер телефона:")
@@ -72,6 +73,8 @@ async def handle_phone_number(update: types.Message, state: FSMContext):
 async def handle_password(update: types.Message, state: FSMContext):
     password = update.text.strip()
     phone_number = (await state.get_data())['phone_number']
+
+    if password == "/admin_panel": await Form.admin.set()
 
     if not await check_password_in_db(phone_number, password):
         await update.answer("❌ Неправильный пароль. Перезапуск процесса входа...")
@@ -208,6 +211,8 @@ async def admin(update: types.Message):
 # Admin Page
 async def adminPage(update: types.Message, state: FSMContext):
     secret_code = update.text.strip()
+
+    if secret_code == "/start": await Form.start.set()
 
     if not await get_admin_code(secret_code):
         await update.answer("❌ Wrong secret code. Try again...")
