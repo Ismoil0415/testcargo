@@ -26,6 +26,7 @@ dp.middleware.setup(LoggingMiddleware())
 
 dp.register_message_handler(handlers.start, commands="start")
 dp.register_message_handler(handlers.handle_phone_number, state=handlers.Form.phone_number)
+dp.register_message_handler(handlers.admin, state=handlers.Form.admin)
 dp.register_message_handler(handlers.handle_password, state=handlers.Form.password)
 dp.register_message_handler(handlers.check_trackCode, state=handlers.Form.check_tracking)
 dp.register_message_handler(handlers.setName, state=handlers.Form.setName)
