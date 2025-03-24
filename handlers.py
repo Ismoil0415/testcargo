@@ -52,22 +52,23 @@ async def handle_phone_number(update: types.Message, state: FSMContext):
     phone_number = update.text.strip()
 
     if phone_number == "/admin_panel": await Form.admin.set()
+    else:
+        
+        if not await is_valid_phone_number(phone_number):
+            await update.answer("❌ Неверный формат номера телефона. Введите действительный номер телефона:")
+            return
 
-    if not await is_valid_phone_number(phone_number):
-        await update.answer("❌ Неверный формат номера телефона. Введите действительный номер телефона:")
-        return
+        if not await check_user_in_db(phone_number):
+            await update.answer("⚠️ В нашей базе данных нет этого номера. Проверьте его или свяжитесь со службой поддержки.\nАдминистратор: @justsherozz")
+            return
 
-    if not await check_user_in_db(phone_number):
-        await update.answer("⚠️ В нашей базе данных нет этого номера. Проверьте его или свяжитесь со службой поддержки.\nАдминистратор: @justsherozz")
-        return
+        if await is_phone_logged_in(phone_number):
+            await update.answer("🚫 Эта учетная запись уже вошла в систему на другом устройстве. Сначала выйдите из системы, чтобы продолжить.\nПожалуйста, отправьте свой номер телефона еще раз:")
+            return
 
-    if await is_phone_logged_in(phone_number):
-        await update.answer("🚫 Эта учетная запись уже вошла в систему на другом устройстве. Сначала выйдите из системы, чтобы продолжить.\nПожалуйста, отправьте свой номер телефона еще раз:")
-        return
-
-    await state.update_data(phone_number=phone_number)
-    await update.answer("✅ Номер телефона правильный. Введите пароль:")
-    await Form.password.set()
+        await state.update_data(phone_number=phone_number)
+        await update.answer("✅ Номер телефона правильный. Введите пароль:")
+        await Form.password.set()
 
 # Handle password input: Validate password and log the user in if correct
 async def handle_password(update: types.Message, state: FSMContext):
@@ -213,21 +214,21 @@ async def adminPage(update: types.Message, state: FSMContext):
     secret_code = update.text.strip()
 
     if secret_code == "/start": await Form.start.set()
-
-    if not await get_admin_code(secret_code):
-        await update.answer("❌ Wrong secret code. Try again...")
-        return
+    else:
+        if not await get_admin_code(secret_code):
+            await update.answer("❌ Wrong secret code. Try again...")
+            return
         
-    keyboard = [
-            ["📦 Обновить список трек-кодов", "👤 Новый пользователь"],
-            ["🗑 Удалить пользователя", "📤 Экспорт данных"],
-            ["🔔 Уведомить о прибытии трек-кодов","♻️ Изменение статуса трек-кодов"],
-            ["🗑 Удалить завершенные треки 🗑"]
-            ]
-    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-    await update.answer("🎉 Добро пожаловать в панель администратора!")
-    await update.answer("📌 Выберите вариант:", reply_markup=reply_markup)
-    await state.finish()
+        keyboard = [
+                ["📦 Обновить список трек-кодов", "👤 Новый пользователь"],
+                ["🗑 Удалить пользователя", "📤 Экспорт данных"],
+                ["🔔 Уведомить о прибытии трек-кодов","♻️ Изменение статуса трек-кодов"],
+                ["🗑 Удалить завершенные треки 🗑"]
+                ]
+        reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+        await update.answer("🎉 Добро пожаловать в панель администратора!")
+        await update.answer("📌 Выберите вариант:", reply_markup=reply_markup)
+        await state.finish()
 
 # Обновить список трек-кодов Message
 async def updatePage(update: types.Message, state: FSMContext):
