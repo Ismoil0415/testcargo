@@ -59,7 +59,7 @@ async def handle_phone_number(update: types.Message, state: FSMContext):
             return
 
         if not await check_user_in_db(phone_number):
-            await update.answer("⚠️ В нашей базе данных нет этого номера. Проверьте его или свяжитесь со службой поддержки.\nАдминистратор: @justsherozz")
+            await update.answer("⚠️ В нашей базе данных нет этого номера. Проверьте его или свяжитесь со службой поддержки.\nАдминистратор: @ismoil_rahmonov")
             return
 
         if await is_phone_logged_in(phone_number):
@@ -159,8 +159,8 @@ async def check_trackCode(update: types.Message, state: FSMContext):
         await update.answer(f"✅ Статус трек-кода: {track_status}\n📅 Дата прибытия на склад в Китае: {track_arriveDate}\n📅 Предполагаемая дата прибытия на наш склад в Таджикистане: ~ {track_arriveDateTJ}", reply_markup=reply_markup)
         if await get_track_link(track_code) == "unlinked":
             keyboard = InlineKeyboardMarkup().add(
-                InlineKeyboardButton("✅ Yes", callback_data="link_track_yes"),
-                InlineKeyboardButton("❌ No", callback_data="link_track_no")
+                InlineKeyboardButton("✅ Да", callback_data="link_track_yes"),
+                InlineKeyboardButton("❌ Нет", callback_data="link_track_no")
             )
             await update.answer("Хотите привязать этот трек к своему телефону?", reply_markup=keyboard)
 
