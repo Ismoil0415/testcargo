@@ -101,20 +101,6 @@ async def get_admin_code(secret_code):
     return False
 
 async def save_to_db(data):
-    """ Save extracted data into MySQL database asynchronously. """
-    try:
-        conn = await connect_db()
-        async with conn.cursor() as cur:
-            # Insert each row into database
-            query = "INSERT INTO cargo (tracking_code, status, arrival_date, linked_phone, linked_uid) VALUES (%s, 'active', %s, 'unlinked', 'unlinked')"
-            await cur.executemany(query, data)  
-        await conn.commit()
-        await conn.ensure_closed()
-        print("✅ Data successfully saved to MySQL!")
-    except Exception as e:
-        print(f"❌ Database Error: {e}")
-
-async def save_to_db(data):
     """ Save extracted data into MySQL database asynchronously, avoiding duplicates. """
     try:
         conn = await connect_db()
@@ -143,66 +129,6 @@ async def save_to_db(data):
 
     except Exception as e:
         print(f"❌ Database Error: {e}")
-
-async def save_new_user_db(name: str, phone: str, password: str):
-    """ Save user data to MySQL if the phone number is unique. """
-    try:
-        # ✅ Connect to MySQL
-        conn = await connect_db()
-        async with conn.cursor() as cur:
-            
-            # ✅ Check if phone number already exists
-            check_query = "SELECT COUNT(*) FROM users WHERE phone_number = %s"
-            await cur.execute(check_query, (phone,))
-            (count,) = await cur.fetchone()
-
-            if count > 0:
-                print(f"⚠️ Phone number {phone} is already registered. Skipping entry.")
-                return "⚠️ Этот номер телефона уже зарегистрирован. Пожалуйста, используйте другой."
-
-            # ✅ Insert Новый пользователь data
-            insert_query = "INSERT INTO users (Name, phone_number, password) VALUES (%s, %s, %s)"
-            await cur.execute(insert_query, (name, phone, password))
-            await conn.commit()
-
-            print(f"✅ User {name} saved successfully!")
-            return "✅ Регистрация прошла успешно!"
-
-        await conn.ensure_closed()
-
-    except Exception as e:
-        print(f"❌ Database Error: {e}")
-        return "❌ Ошибка базы данных. Попробуйте еще раз позже."
-
-async def delete_user_db(phone: str):
-    """ Удалить пользователя from MySQL by phone number if exists. """
-    try:
-        # ✅ Connect to MySQL
-        conn = await connect_db()
-        async with conn.cursor() as cur:
-
-            # ✅ Check if phone number exists
-            check_query = "SELECT COUNT(*) FROM users WHERE phone_number = %s"
-            await cur.execute(check_query, (phone,))
-            (count,) = await cur.fetchone()
-
-            if count == 0:
-                print(f"⚠️ Phone number {phone} not found. Cannot delete.")
-                return "⚠️ Этот номер телефона не зарегистрирован."
-
-            # ✅ Удалить пользователя
-            delete_query = "DELETE FROM users WHERE phone_number = %s"
-            await cur.execute(delete_query, (phone,))
-            await conn.commit()
-
-            print(f"✅ User with phone {phone} deleted successfully!")
-            return "✅ Пользователь успешно удален!"
-
-        await conn.ensure_closed()
-
-    except Exception as e:
-        print(f"❌ Database Error: {e}")
-        return "❌ Ошибка базы данных. Попробуйте еще раз позже."
     
 async def export_user_data(bot: Bot, chat_id: int):
     """ Export 3 Excel files with user and tracking data, then send via Telegram. """

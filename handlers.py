@@ -10,21 +10,13 @@ from aiogram.dispatcher.filters import Text
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.dispatcher.filters import Command
 
-from login import login_user, is_user_logged_in, is_phone_logged_in, get_logged_in_phone, logout_user
-from login import is_valid_phone_number, check_user_in_db, check_password_in_db
 from database import check_tracking_status, get_tracking_status, get_tracking_arriveDate, get_track_link
-from database import link_track_toPhone, myOrderList, get_admin_code, save_to_db, save_new_user_db, delete_user_db, export_user_data, update_tracking_status, notify_users_about_arrivals, delete_from_db
+from database import link_track_toPhone, myOrderList, get_admin_code, save_to_db, export_user_data, update_tracking_status, notify_users_about_arrivals, delete_from_db
 
 class Form(StatesGroup):
-    phone_number = State()
-    password = State()
     check_tracking = State()
     adminPage = State()
     updateList = State()
-    setName = State()
-    setNumber = State()
-    setPassword = State()
-    deleteUser = State()
     changeStatus = State()
     deleteList = State()
     admin = State()
@@ -32,85 +24,19 @@ class Form(StatesGroup):
 
 # Start command: Check if user is already logged in or ask for credentials
 async def start(update: types.Message):
-    uid = update.from_user.id
-
-    if await is_user_logged_in(uid):
-        phone_number = await get_logged_in_phone(uid)
-        keyboard = [
-            ["📦 Отслеживать доставку", "📝 Мои заказы"], 
-            ["💬 Связаться с нами", "🔙 Выйти"]
-            ]
-        reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-        await update.answer(f"✅ Вы уже вошли в систему как {phone_number}.", reply_markup=reply_markup)
-        return
-
-    await update.answer("Добро пожаловать! Введите ваш номер телефона:", reply_markup=ReplyKeyboardRemove())
-    await Form.phone_number.set()
-
-# Handle phone number input: Validate phone number and check if it exists in the database
-async def handle_phone_number(update: types.Message, state: FSMContext):
-    phone_number = update.text.strip()
-
-    if phone_number == "/admin_panel": await Form.admin.set()
-    else:
-        
-        if not await is_valid_phone_number(phone_number):
-            await update.answer("❌ Неверный формат номера телефона. Введите действительный номер телефона:")
-            return
-
-        if not await check_user_in_db(phone_number):
-            await update.answer("⚠️ В нашей базе данных нет этого номера. Проверьте его или свяжитесь со службой поддержки.\nАдминистратор: @ismoil_rahmonov")
-            return
-
-        if await is_phone_logged_in(phone_number):
-            await update.answer("🚫 Эта учетная запись уже вошла в систему на другом устройстве. Сначала выйдите из системы, чтобы продолжить.\nПожалуйста, отправьте свой номер телефона еще раз:")
-            return
-
-        await state.update_data(phone_number=phone_number)
-        await update.answer("✅ Номер телефона правильный. Введите пароль:")
-        await Form.password.set()
-
-# Handle password input: Validate password and log the user in if correct
-async def handle_password(update: types.Message, state: FSMContext):
-    password = update.text.strip()
-    phone_number = (await state.get_data())['phone_number']
-
-    if password == "/admin_panel": await Form.admin.set()
-
-    if not await check_password_in_db(phone_number, password):
-        await update.answer("❌ Неправильный пароль. Перезапуск процесса входа...")
-        await Form.phone_number.set()
-        return
-
-    await login_user(update.from_user.id, phone_number)
     keyboard = [
-            ["📦 Отслеживать доставку", "📝 Мои заказы"], 
-            ["💬 Связаться с нами", "🔙 Выйти"]
-            ]
+        ["📝 Мои трек-коды", "💵 Цены"], 
+        ["🚫 Запрещённые товары", "💬 Связаться с нами"],
+        ["📍 Получить адрес", "👤 Подписаться"],
+        ["🎓 Бесплатное обучение", "💱 Курс обмена (RMB/TJS)"],
+        ["📦 Отслеживать трек-коды"]
+        ]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-    await update.answer("🎉 Добро пожаловать! Вы успешно вошли в систему.")
-    await update.answer("📌 Выберите вариант:", reply_markup=reply_markup)
-    await state.finish()
-
-# Logout command: Log the user out when they send /logout or press '🔙 Выйти' button
-async def logout(update: types.Message):
-    uid = update.from_user.id
-
-    if await is_user_logged_in(uid):
-        await logout_user(uid)
-        await update.answer("✅ Вы успешно вышли из системы. Если вы хотите снова войти в систему, отправьте команду /start", reply_markup=ReplyKeyboardRemove())
-    else:
-        await update.answer("⚠️ Вы не вошли в систему.")
+    await update.answer(f"👋 Привет! Добро пожаловать в Cargo Bot!\nЗдесь вы можете легко проверить статус вашего груза. Просто отправьте трек-номер и получите информацию! 📦🔍", reply_markup=reply_markup)
+    return
 
 # When user presses "📦 Отслеживать доставку" button, hide buttons and ask for tracking code
 async def check_trackCodeMessage(update: types.Message):
-    uid = update.from_user.id
-
-    if not await is_user_logged_in(uid):
-        await update.answer("⚠️ Вы не вошли в систему.")
-        return
-
-    # Hide buttons and ask for tracking code
     keyboard = [["Отмена/Выход"]]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     await update.answer("📦 Введите ваш код отслеживания:", reply_markup=reply_markup)
@@ -123,8 +49,11 @@ async def check_trackCode(update: types.Message, state: FSMContext):
     
     if track_code == "Отмена/Выход":
         keyboard = [
-            ["📦 Отслеживать доставку", "📝 Мои заказы"], 
-            ["💬 Связаться с нами", "🔙 Выйти"]
+            ["📝 Мои трек-коды", "💵 Цены"], 
+            ["🚫 Запрещённые товары", "💬 Связаться с нами"],
+            ["📍 Получить адрес", "👤 Подписаться"],
+            ["🎓 Бесплатное обучение", "💱 Курс обмена (RMB/TJS)"],
+            ["📦 Отслеживать трек-коды"]
             ]
         reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
         await update.answer("📌 Выберите вариант:", reply_markup=reply_markup)
@@ -152,8 +81,11 @@ async def check_trackCode(update: types.Message, state: FSMContext):
         if track_status == 'arrived': track_status = 'Товар прибыл на наш склад в Таджикистане. Если мы вам все еще не позвонили, свяжитесь с администратором.'
 
         keyboard = [
-            ["📦 Отслеживать доставку", "📝 Мои заказы"], 
-            ["💬 Связаться с нами", "🔙 Выйти"]
+            ["📝 Мои трек-коды", "💵 Цены"], 
+            ["🚫 Запрещённые товары", "💬 Связаться с нами"],
+            ["📍 Получить адрес", "👤 Подписаться"],
+            ["🎓 Бесплатное обучение", "💱 Курс обмена (RMB/TJS)"],
+            ["📦 Отслеживать трек-коды"]
             ]
         reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
         await update.answer(f"✅ Статус трек-кода: {track_status}\n📅 Дата прибытия на склад в Китае: {track_arriveDate}\n📅 Предполагаемая дата прибытия на наш склад в Таджикистане: ~ {track_arriveDateTJ}", reply_markup=reply_markup)
@@ -173,9 +105,7 @@ async def link_track_yes(callback_query: types.CallbackQuery, state: FSMContext)
     track_code = data.get("track_code")
     uid = data.get("uid")
 
-    phone_number = await get_logged_in_phone(uid)
-
-    await link_track_toPhone(track_code, phone_number, uid)
+    await link_track_toPhone(track_code, uid)
     await callback_query.message.edit_text("✅ Код отслеживания привязан к вашему телефону!")
 
 # Callback handler for "No" button
@@ -186,21 +116,25 @@ async def link_track_no(callback_query: types.CallbackQuery):
 async def myOrders(update: types.Message):
     uid = update.from_user.id
 
-    if await is_user_logged_in(uid):
-        myList = await myOrderList(uid)  # Await the result of the async function
+    myList = await myOrderList(uid)  # Await the result of the async function
 
-        if myList:
-            tracking_codes = "\n".join(f"`{row[0]}`" for row in myList)  # Format each line in monospace
-            message_text = f"📦 *Список заказов (привязан к этому устройству):*\n\n{tracking_codes}"
-        else:
-            message_text = "Заказы не найдены."
+    if myList:
+        tracking_codes = "\n".join(f"`{row[0]}`" for row in myList)  # Format each line in monospace
+        message_text = f"📦 *Список заказов (привязан к этому устройству):*\n\n{tracking_codes}"
+    else:
+        message_text = "Заказы не найдены."
 
-        await update.answer(
+    await update.answer(
     message_text,
     parse_mode='markdown'
 )
-    else:
-        await update.answer("⚠️ Вы не вошли в систему.")
+
+async def contactUs(update: types.Message, state: FSMContext):
+    await update.answer("🔹Инстагарам: rahmonov.me✅\n🔹Админ: @ismoil_rahmonov")
+    await state.finish()
+
+
+
 
 # Admin Login
 async def admin(update: types.Message):
@@ -216,14 +150,14 @@ async def adminPage(update: types.Message, state: FSMContext):
     if secret_code == "/start": await Form.start.set()
     else:
         if not await get_admin_code(secret_code):
-            await update.answer("❌ Wrong secret code. Try again...")
+            await update.answer("❌ Неверный секретный код. Попробуйте снова...")
             return
         
         keyboard = [
-                ["📦 Обновить список трек-кодов", "👤 Новый пользователь"],
-                ["🗑 Удалить пользователя", "📤 Экспорт данных"],
+                ["📦 Обновить список трек-кодов", "📈 Статистика"],
                 ["🔔 Уведомить о прибытии трек-кодов","♻️ Изменение статуса трек-кодов"],
-                ["🗑 Удалить завершенные треки 🗑"]
+                ["🗑 Удалить завершенные треки", "📝 Добавить трек-код вручную"],
+                ["📤 Экспорт данных"]
                 ]
         reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
         await update.answer("🎉 Добро пожаловать в панель администратора!")
@@ -239,10 +173,10 @@ async def updatePage(update: types.Message, state: FSMContext):
 
 async def cancel_task(update: types.Message, state: FSMContext):
     keyboard = [
-            ["📦 Обновить список трек-кодов", "👤 Новый пользователь"],
-            ["🗑 Удалить пользователя", "📤 Экспорт данных"],
+            ["📦 Обновить список трек-кодов", "📈 Статистика"],
             ["🔔 Уведомить о прибытии трек-кодов","♻️ Изменение статуса трек-кодов"],
-            ["🗑 Удалить завершенные треки 🗑"]
+            ["🗑 Удалить завершенные треки", "📝 Добавить трек-код вручную"],
+            ["📤 Экспорт данных"]
             ]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     await update.answer("📌 Выберите вариант:", reply_markup=reply_markup)
@@ -264,10 +198,10 @@ async def updateList(update: types.Message, state: FSMContext):
 
         if user_text == "отмена/выход":
             keyboard = [
-            ["📦 Обновить список трек-кодов", "👤 Новый пользователь"],
-            ["🗑 Удалить пользователя", "📤 Экспорт данных"],
+            ["📦 Обновить список трек-кодов", "📈 Статистика"],
             ["🔔 Уведомить о прибытии трек-кодов","♻️ Изменение статуса трек-кодов"],
-            ["🗑 Удалить завершенные треки 🗑"]
+            ["🗑 Удалить завершенные треки", "📝 Добавить трек-код вручную"],
+            ["📤 Экспорт данных"]
             ]
             reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
             await update.answer("📌 Выберите вариант:", reply_markup=reply_markup)
@@ -350,10 +284,10 @@ async def updateList(update: types.Message, state: FSMContext):
             unique_count = len(extracted_data)
             await update.reply(f"✅ {unique_count} новые записи сохранены. Дубликаты пропущены!")
             keyboard = [
-                ["📦 Обновить список трек-кодов", "👤 Новый пользователь"],
-                ["🗑 Удалить пользователя", "📤 Экспорт данных"],
-                ["🔔 Уведомить о прибытии трек-кодов", "♻️ Изменение статуса трек-кодов"],
-                ["🗑 Удалить завершенные треки 🗑"]
+                ["📦 Обновить список трек-кодов", "📈 Статистика"],
+                ["🔔 Уведомить о прибытии трек-кодов","♻️ Изменение статуса трек-кодов"],
+                ["🗑 Удалить завершенные треки", "📝 Добавить трек-код вручную"],
+                ["📤 Экспорт данных"]
             ]
             reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
             await update.answer("📌 Выберите вариант:", reply_markup=reply_markup)
@@ -361,10 +295,10 @@ async def updateList(update: types.Message, state: FSMContext):
         else:
             await update.reply("⚠️ В файле не найдено новых действительных кодов треков.")
             keyboard = [
-            ["📦 Обновить список трек-кодов", "👤 Новый пользователь"],
-            ["🗑 Удалить пользователя", "📤 Экспорт данных"],
+            ["📦 Обновить список трек-кодов", "📈 Статистика"],
             ["🔔 Уведомить о прибытии трек-кодов","♻️ Изменение статуса трек-кодов"],
-            ["🗑 Удалить завершенные треки 🗑"]
+            ["🗑 Удалить завершенные треки", "📝 Добавить трек-код вручную"],
+            ["📤 Экспорт данных"]
             ]
             reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
             await update.answer("📌 Выберите вариант:", reply_markup=reply_markup)
@@ -376,126 +310,6 @@ async def updateList(update: types.Message, state: FSMContext):
     except Exception as e:
         print(f"❌ Error processing Excel file: {e}")
         await update.reply("❌ Не удалось обработать файл. Проверьте формат и попробуйте еще раз.")
-
-async def newUser(update: types.Message):
-    keyboard = [["Отмена/Выход"]]
-    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-    await update.answer("Пожалуйста, пришлите имя нового пользователя:", reply_markup=reply_markup)
-    await Form.setName.set()
-
-async def setName(update: types.Message, state: FSMContext):
-    name = update.text.strip()
-
-    if name == "Отмена/Выход":
-            keyboard = [
-            ["📦 Обновить список трек-кодов", "👤 Новый пользователь"],
-            ["🗑 Удалить пользователя", "📤 Экспорт данных"],
-            ["🔔 Уведомить о прибытии трек-кодов","♻️ Изменение статуса трек-кодов"],
-            ["🗑 Удалить завершенные треки 🗑"]
-            ]
-            reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-            await update.answer("📌 Выберите вариант:", reply_markup=reply_markup)
-            await state.finish()
-    else:
-        await state.update_data(name=name)
-        await update.answer("Пожалуйста, пришлите номер телефона нового пользователя:\n(Пример: 987654321)")
-        await Form.setNumber.set()
-
-async def setNumber(update: types.Message, state: FSMContext):
-    number = update.text.strip()
-
-    if number == "Отмена/Выход":
-            keyboard = [
-            ["📦 Обновить список трек-кодов", "👤 Новый пользователь"],
-            ["🗑 Удалить пользователя", "📤 Экспорт данных"],
-            ["🔔 Уведомить о прибытии трек-кодов","♻️ Изменение статуса трек-кодов"],
-            ["🗑 Удалить завершенные треки 🗑"]
-            ]
-            reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-            await update.answer("📌 Выберите вариант:", reply_markup=reply_markup)
-            await state.finish()
-    else:
-
-        # ✅ Check if input is exactly 9 digits
-        if re.fullmatch(r"\d{9}", number):
-            await state.update_data(number=number)
-            await update.answer("Пожалуйста, пришлите пароль нового пользователя (минимум: 8 цифр):")
-            await Form.setPassword.set()
-        else:
-            await update.reply("❌ Неверный формат! Введите ровно **9 цифр**.")
-            return
-
-async def setPassword(update: types.Message, state: FSMContext):
-    password = update.text.strip()
-
-    if password == "Отмена/Выход":
-            keyboard = [
-            ["📦 Обновить список трек-кодов", "👤 Новый пользователь"],
-            ["🗑 Удалить пользователя", "📤 Экспорт данных"],
-            ["🔔 Уведомить о прибытии трек-кодов","♻️ Изменение статуса трек-кодов"],
-            ["🗑 Удалить завершенные треки 🗑"]
-            ]
-            reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-            await update.answer("📌 Выберите вариант:", reply_markup=reply_markup)
-            await state.finish()
-    else:
-        if re.fullmatch(r".{8,}", password):
-            data = await state.get_data()
-            name = data.get("name")
-            number = data.get("number")
-
-            # ✅ Save to database
-            result = await save_new_user_db(name, number, password)
-            await update.answer(result)
-            keyboard = [
-            ["📦 Обновить список трек-кодов", "👤 Новый пользователь"],
-            ["🗑 Удалить пользователя", "📤 Экспорт данных"],
-            ["🔔 Уведомить о прибытии трек-кодов","♻️ Изменение статуса трек-кодов"],
-            ["🗑 Удалить завершенные треки 🗑"]
-            ]
-            reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-            await update.answer("📌 Выберите вариант:", reply_markup=reply_markup)
-        
-            # ✅ Clear FSM state after saving
-            await state.finish()
-        else:
-            await update.reply("❌ Неверный формат! Введите не менее **8 символов**.")
-            return
-        
-async def deleteUser(update: types.Message):
-    keyboard = [["Отмена/Выход"]]
-    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-    await update.answer("Пожалуйста, отправьте номер телефона пользователя:", reply_markup=reply_markup)
-    await Form.deleteUser.set()
-
-async def deleteUserDB(update: types.Message, state: FSMContext):
-    number = update.text.strip()
-
-    if number == "Отмена/Выход":
-            keyboard = [
-            ["📦 Обновить список трек-кодов", "👤 Новый пользователь"],
-            ["🗑 Удалить пользователя", "📤 Экспорт данных"],
-            ["🔔 Уведомить о прибытии трек-кодов","♻️ Изменение статуса трек-кодов"],
-            ["🗑 Удалить завершенные треки 🗑"]
-            ]
-            reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-            await update.answer("📌 Выберите вариант:", reply_markup=reply_markup)
-            await state.finish()
-    else:
-        # ✅ Save to database
-        result = await delete_user_db(number)
-        await update.answer(result)
-        keyboard = [
-        ["📦 Обновить список трек-кодов", "👤 Новый пользователь"],
-        ["🗑 Удалить пользователя", "📤 Экспорт данных"],
-        ["🔔 Уведомить о прибытии трек-кодов","♻️ Изменение статуса трек-кодов"],
-        ["🗑 Удалить завершенные треки 🗑"]
-        ]
-        reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-        await update.answer("📌 Выберите вариант:", reply_markup=reply_markup)
-        
-        # ✅ Clear FSM state after saving
-        await state.finish()
 
 async def exportUserData(update: types.Message):
     """ Command to trigger user data export. """
@@ -512,10 +326,10 @@ async def changeStatusTrack(update: types.Message, state: FSMContext):
 
     if date == "Отмена/Выход":
         keyboard = [
-        ["📦 Обновить список трек-кодов", "👤 Новый пользователь"],
-        ["🗑 Удалить пользователя", "📤 Экспорт данных"],
+        ["📦 Обновить список трек-кодов", "📈 Статистика"],
         ["🔔 Уведомить о прибытии трек-кодов","♻️ Изменение статуса трек-кодов"],
-        ["🗑 Удалить завершенные треки 🗑"]
+        ["🗑 Удалить завершенные треки", "📝 Добавить трек-код вручную"],
+        ["📤 Экспорт данных"]
         ]
         reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
         await update.answer("📌 Выберите вариант:", reply_markup=reply_markup)
@@ -524,10 +338,10 @@ async def changeStatusTrack(update: types.Message, state: FSMContext):
         result = await update_tracking_status(date)
         await update.reply(result)
         keyboard = [
-        ["📦 Обновить список трек-кодов", "👤 Новый пользователь"],
-        ["🗑 Удалить пользователя", "📤 Экспорт данных"],
+        ["📦 Обновить список трек-кодов", "📈 Статистика"],
         ["🔔 Уведомить о прибытии трек-кодов","♻️ Изменение статуса трек-кодов"],
-        ["🗑 Удалить завершенные треки 🗑"]
+        ["🗑 Удалить завершенные треки", "📝 Добавить трек-код вручную"],
+        ["📤 Экспорт данных"]
         ]
         reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
         await update.answer("📌 Выберите вариант:", reply_markup=reply_markup)
@@ -543,10 +357,10 @@ async def notify_users(update: types.Message, state: FSMContext):
 
     # ✅ Show keyboard after notifications are sent
     keyboard = [
-        ["📦 Обновить список трек-кодов", "👤 Новый пользователь"],
-        ["🗑 Удалить пользователя", "📤 Экспорт данных"],
+        ["📦 Обновить список трек-кодов", "📈 Статистика"],
         ["🔔 Уведомить о прибытии трек-кодов","♻️ Изменение статуса трек-кодов"],
-        ["🗑 Удалить завершенные треки 🗑"]
+        ["🗑 Удалить завершенные треки", "📝 Добавить трек-код вручную"],
+        ["📤 Экспорт данных"]
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     
@@ -575,10 +389,10 @@ async def deleteList(update: types.Message, state: FSMContext):
 
         if user_text == "отмена/выход":
             keyboard = [
-            ["📦 Обновить список трек-кодов", "👤 Новый пользователь"],
-            ["🗑 Удалить пользователя", "📤 Экспорт данных"],
+            ["📦 Обновить список трек-кодов", "📈 Статистика"],
             ["🔔 Уведомить о прибытии трек-кодов","♻️ Изменение статуса трек-кодов"],
-            ["🗑 Удалить завершенные треки 🗑"]
+            ["🗑 Удалить завершенные треки", "📝 Добавить трек-код вручную"],
+            ["📤 Экспорт данных"]
             ]
             reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
             await update.answer("📌 Выберите вариант:", reply_markup=reply_markup)
@@ -661,10 +475,10 @@ async def deleteList(update: types.Message, state: FSMContext):
             unique_count = len(extracted_data)
             await update.reply(f"✅ {unique_count} записи удалены.")
             keyboard = [
-            ["📦 Обновить список трек-кодов", "👤 Новый пользователь"],
-            ["🗑 Удалить пользователя", "📤 Экспорт данных"],
+            ["📦 Обновить список трек-кодов", "📈 Статистика"],
             ["🔔 Уведомить о прибытии трек-кодов","♻️ Изменение статуса трек-кодов"],
-            ["🗑 Удалить завершенные треки 🗑"]
+            ["🗑 Удалить завершенные треки", "📝 Добавить трек-код вручную"],
+            ["📤 Экспорт данных"]
             ]
             reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
             await update.answer("📌 Выберите вариант:", reply_markup=reply_markup)
@@ -672,10 +486,10 @@ async def deleteList(update: types.Message, state: FSMContext):
         else:
             await update.reply("⚠️ В файле не найдено действительных трек-кодов.")
             keyboard = [
-            ["📦 Обновить список трек-кодов", "👤 Новый пользователь"],
-            ["🗑 Удалить пользователя", "📤 Экспорт данных"],
+            ["📦 Обновить список трек-кодов", "📈 Статистика"],
             ["🔔 Уведомить о прибытии трек-кодов","♻️ Изменение статуса трек-кодов"],
-            ["🗑 Удалить завершенные треки 🗑"]
+            ["🗑 Удалить завершенные треки", "📝 Добавить трек-код вручную"],
+            ["📤 Экспорт данных"]
             ]
             reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
             await update.answer("📌 Выберите вариант:", reply_markup=reply_markup)
@@ -687,7 +501,3 @@ async def deleteList(update: types.Message, state: FSMContext):
     except Exception as e:
         print(f"❌ Error processing Excel file: {e}")
         await update.reply("❌ Не удалось обработать файл. Проверьте формат и попробуйте еще раз.")
-
-async def contactUs(update: types.Message, state: FSMContext):
-    await update.answer("🔹Инстагарам: rahmonov.me✅\n🔹Админ: @ismoil_rahmonov")
-    await state.finish()
